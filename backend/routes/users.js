@@ -85,9 +85,13 @@ router.get('/birthdays/upcoming', protect, async (req, res) => {
       'dateNaissance.mois': { $exists: true }
     }).select('nom prenom dateNaissance photo');
 
-    const today = new Date();
-    const currentDay = today.getDate();
-    const currentMonth = today.getMonth() + 1;
+    // Utiliser le fuseau horaire UTC-5 (Montréal/New York)
+    const now = new Date();
+    const offsetMs = -5 * 60 * 60 * 1000; // UTC-5
+    const localNow = new Date(now.getTime() + offsetMs + now.getTimezoneOffset() * 60 * 1000);
+    
+    // Début de la journée locale
+    const today = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate());
 
     const upcomingBirthdays = users.map(user => {
       const { jour, mois } = user.dateNaissance;
@@ -97,9 +101,9 @@ router.get('/birthdays/upcoming', protect, async (req, res) => {
       const nextYearBirthday = new Date(today.getFullYear() + 1, mois - 1, jour);
       
       if (thisYearBirthday >= today) {
-        daysUntil = Math.ceil((thisYearBirthday - today) / (1000 * 60 * 60 * 24));
+        daysUntil = Math.round((thisYearBirthday - today) / (1000 * 60 * 60 * 24));
       } else {
-        daysUntil = Math.ceil((nextYearBirthday - today) / (1000 * 60 * 60 * 24));
+        daysUntil = Math.round((nextYearBirthday - today) / (1000 * 60 * 60 * 24));
       }
 
       return {
