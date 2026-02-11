@@ -95,18 +95,58 @@ const checkMeetingReminders = async () => {
   }
 };
 
+const autoStartMeetings = async () => {
+  try {
+    // Utiliser le fuseau horaire UTC-5 (Montréal)
+    const now = new Date();
+    const offsetMs = -5 * 60 * 60 * 1000;
+    const localNow = new Date(now.getTime() + offsetMs + now.getTimezoneOffset() * 60 * 1000);
+    
+    const currentHour = localNow.getHours();
+    const currentMinute = localNow.getMinutes();
+    const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    
+    const today = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate());
+
+    const meetings = await Meeting.find({
+      statut: 'planifiee'
+    });
+
+    for (const meeting of meetings) {
+      const meetingDate = new Date(meeting.date);
+      meetingDate.setHours(0, 0, 0, 0);
+      
+      // Vérifier si c'est le jour de la réunion et l'heure de début
+      if (meetingDate.getTime() === today.getTime() && meeting.heureDebut === currentTimeStr) {
+        meeting.statut = 'en_cours';
+        await meeting.save();
+        console.log(`🚀 Réunion "${meeting.titre}" démarrée automatiquement à ${currentTimeStr}`);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur démarrage auto réunions:', error.message);
+  }
+};
+
 const startReminderScheduler = () => {
+  // Rappels quotidiens à 8h
   cron.schedule('0 8 * * *', async () => {
     console.log('Exécution des rappels quotidiens...');
     await checkBirthdayReminders();
     await checkMeetingReminders();
   });
 
-  console.log('Planificateur de rappels démarré (tous les jours à 8h)');
+  // Vérification toutes les minutes pour démarrage auto des réunions
+  cron.schedule('* * * * *', async () => {
+    await autoStartMeetings();
+  });
+
+  console.log('Planificateur de rappels démarré (rappels à 8h, démarrage auto chaque minute)');
 };
 
 module.exports = {
   startReminderScheduler,
   checkBirthdayReminders,
-  checkMeetingReminders
+  checkMeetingReminders,
+  autoStartMeetings
 };

@@ -343,7 +343,7 @@ const MeetingDetail = () => {
         </div>
 
         <div className="p-6 border-t border-gray-100 flex flex-wrap gap-3">
-          {['president', 'censeur'].includes(user?.role) && meeting.statut === 'planifiee' && (
+          {['president', 'censeur', 'tresorier'].includes(user?.role) && meeting.statut === 'planifiee' && (
             <button
               onClick={handleStartMeeting}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -353,7 +353,7 @@ const MeetingDetail = () => {
             </button>
           )}
 
-          {['president', 'censeur'].includes(user?.role) && meeting.statut === 'en_cours' && (
+          {['president', 'censeur', 'tresorier'].includes(user?.role) && meeting.statut === 'en_cours' && (
             <button
               onClick={handleEndMeeting}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
