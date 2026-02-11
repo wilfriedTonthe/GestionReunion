@@ -102,11 +102,8 @@ const autoStartMeetings = async () => {
     const offsetMs = -5 * 60 * 60 * 1000;
     const localNow = new Date(now.getTime() + offsetMs + now.getTimezoneOffset() * 60 * 1000);
     
-    const currentHour = localNow.getHours();
-    const currentMinute = localNow.getMinutes();
-    const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-    
     const today = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate());
+    const currentMinutes = localNow.getHours() * 60 + localNow.getMinutes();
 
     const meetings = await Meeting.find({
       statut: 'planifiee'
@@ -116,11 +113,20 @@ const autoStartMeetings = async () => {
       const meetingDate = new Date(meeting.date);
       meetingDate.setHours(0, 0, 0, 0);
       
-      // Vérifier si c'est le jour de la réunion et l'heure de début
-      if (meetingDate.getTime() === today.getTime() && meeting.heureDebut === currentTimeStr) {
-        meeting.statut = 'en_cours';
-        await meeting.save();
-        console.log(`🚀 Réunion "${meeting.titre}" démarrée automatiquement à ${currentTimeStr}`);
+      // Vérifier si c'est le jour de la réunion
+      if (meetingDate.getTime() === today.getTime()) {
+        // Convertir l'heure de début en minutes
+        const [heureDebut, minuteDebut] = meeting.heureDebut.split(':').map(Number);
+        const meetingStartMinutes = heureDebut * 60 + minuteDebut;
+        
+        // Démarrer 30 minutes avant l'heure de début
+        const startTime = meetingStartMinutes - 30;
+        
+        if (currentMinutes >= startTime) {
+          meeting.statut = 'en_cours';
+          await meeting.save();
+          console.log(`🚀 Réunion "${meeting.titre}" démarrée automatiquement (30 min avant ${meeting.heureDebut})`);
+        }
       }
     }
   } catch (error) {
