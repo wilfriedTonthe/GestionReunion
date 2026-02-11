@@ -10,7 +10,8 @@ import {
   Menu, 
   X,
   Book,
-  Heart
+  Heart,
+  Megaphone
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -22,6 +23,7 @@ const Layout = () => {
   const navigation = [
     { name: 'Tableau de bord', href: '/', icon: Home },
     { name: 'Réunions', href: '/meetings', icon: Calendar },
+    { name: 'Communiqués', href: '/announcements', icon: Megaphone },
     { name: 'Amendes', href: '/fines', icon: DollarSign },
     { name: 'Votes', href: '/votes', icon: Vote },
     { name: 'Règlement', href: '/reglement', icon: Book },

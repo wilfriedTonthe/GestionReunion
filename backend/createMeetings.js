@@ -62,8 +62,8 @@ const createMeetings = async () => {
         heureDebut: '19:30',
         heureFin: '22:00',
         lieu: {
-          nom: `Chez ${reunion.hotes.split(' & ')[0]}`,
-          adresse: 'À confirmer',
+          nom: reunion.adresse || 'À confirmer',
+          adresse: reunion.adresse || 'À confirmer',
           coordinates: { latitude: 45.5017, longitude: -73.5673 } // Montréal par défaut
         },
         rayonPointage: 1000,

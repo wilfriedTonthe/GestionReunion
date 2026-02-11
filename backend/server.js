@@ -12,6 +12,7 @@ const meetingRoutes = require('./routes/meetings');
 const fineRoutes = require('./routes/fines');
 const voteRoutes = require('./routes/votes');
 const attendanceRoutes = require('./routes/attendance');
+const announcementRoutes = require('./routes/announcements');
 
 const { startReminderScheduler } = require('./utils/reminderScheduler');
 
@@ -36,6 +37,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/fines', fineRoutes);
 app.use('/api/votes', voteRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'RegioConnect API is running' });

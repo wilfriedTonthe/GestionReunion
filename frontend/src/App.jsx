@@ -12,6 +12,7 @@ import VoteDetail from './pages/VoteDetail';
 import Users from './pages/Users';
 import Reglement from './pages/Reglement';
 import Profile from './pages/Profile';
+import Announcements from './pages/Announcements';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -49,6 +50,7 @@ function App() {
             <Route path="votes/:id" element={<VoteDetail />} />
             <Route path="users" element={<Users />} />
             <Route path="reglement" element={<Reglement />} />
+            <Route path="announcements" element={<Announcements />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
