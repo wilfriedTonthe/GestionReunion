@@ -343,7 +343,7 @@ const MeetingDetail = () => {
         </div>
 
         <div className="p-6 border-t border-gray-100 flex flex-wrap gap-3">
-          {user?.role === 'president' && meeting.statut === 'planifiee' && (
+          {['president', 'censeur'].includes(user?.role) && meeting.statut === 'planifiee' && (
             <button
               onClick={handleStartMeeting}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"

@@ -87,7 +87,7 @@ router.put('/:id', protect, authorize('president'), async (req, res) => {
   }
 });
 
-router.put('/:id/start', protect, authorize('president'), async (req, res) => {
+router.put('/:id/start', protect, authorize('president', 'censeur'), async (req, res) => {
   try {
     const meeting = await Meeting.findByIdAndUpdate(
       req.params.id,
