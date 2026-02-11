@@ -155,9 +155,51 @@ const sendMeetingReminder = async (recipients, meeting, daysUntil) => {
   }
 };
 
+const checkAndNotifyNewMemberBirthday = async (newMember, allMembers) => {
+  if (!newMember.dateNaissance?.jour || !newMember.dateNaissance?.mois) {
+    return false;
+  }
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  
+  let birthdayThisYear = new Date(currentYear, newMember.dateNaissance.mois - 1, newMember.dateNaissance.jour);
+  
+  if (birthdayThisYear < today) {
+    birthdayThisYear = new Date(currentYear + 1, newMember.dateNaissance.mois - 1, newMember.dateNaissance.jour);
+  }
+  
+  const diffTime = birthdayThisYear - today;
+  const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (daysUntil <= 7 && daysUntil >= 0) {
+    const recipients = allMembers.filter(m => 
+      m._id.toString() !== newMember._id.toString() && 
+      m.email && 
+      m.actif
+    );
+    
+    if (recipients.length > 0) {
+      const birthdayPerson = {
+        prenom: newMember.prenom,
+        nom: newMember.nom,
+        jour: newMember.dateNaissance.jour,
+        mois: newMember.dateNaissance.mois
+      };
+      
+      await sendBirthdayReminder(recipients, birthdayPerson, daysUntil);
+      console.log(`Notification anniversaire envoyée pour nouveau membre ${newMember.prenom} (dans ${daysUntil} jours)`);
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 module.exports = {
   sendEmail,
   sendBirthdayReminder,
   sendBirthdayReminderToSelf,
-  sendMeetingReminder
+  sendMeetingReminder,
+  checkAndNotifyNewMemberBirthday
 };

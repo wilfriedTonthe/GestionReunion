@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
-const { sendEmail } = require('../utils/emailService');
+const { sendEmail, checkAndNotifyNewMemberBirthday } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ const generateToken = (id) => {
 
 router.post('/register', async (req, res) => {
   try {
-    const { nom, prenom, email, password, telephone } = req.body;
+    const { nom, prenom, email, password, telephone, dateNaissance } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -27,8 +27,15 @@ router.post('/register', async (req, res) => {
       prenom,
       email,
       password,
-      telephone
+      telephone,
+      dateNaissance
     });
+
+    // Vérifier si l'anniversaire du nouveau membre est proche (moins de 7 jours)
+    if (dateNaissance?.jour && dateNaissance?.mois) {
+      const allMembers = await User.find({ actif: true });
+      await checkAndNotifyNewMemberBirthday(user, allMembers);
+    }
 
     const token = generateToken(user._id);
 
