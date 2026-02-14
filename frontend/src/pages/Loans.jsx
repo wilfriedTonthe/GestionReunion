@@ -379,7 +379,7 @@ const Loans = () => {
                   </div>
                   <div className="flex gap-2">
                     {/* Bouton annuler pour le demandeur (ses propres demandes en attente) */}
-                    {activeTab === 'mine' && loan.statut === 'en_attente' && (
+                    {(activeTab === 'my' || !canViewAll) && loan.statut === 'en_attente' && (
                       <button
                         onClick={() => handleAnnulerDemande(loan._id)}
                         className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium"
