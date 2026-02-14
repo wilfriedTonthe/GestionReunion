@@ -171,6 +171,36 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
+// Annuler sa propre demande de prêt (si pas encore approuvée)
+router.delete('/:id/annuler', protect, async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.id);
+
+    if (!loan) {
+      return res.status(404).json({ message: 'Prêt non trouvé' });
+    }
+
+    // Vérifier que c'est bien le demandeur
+    if (loan.demandeur.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Vous ne pouvez annuler que vos propres demandes' });
+    }
+
+    // Vérifier que le prêt n'a pas encore été approuvé
+    if (loan.statut !== 'en_attente') {
+      return res.status(400).json({ message: 'Impossible d\'annuler une demande déjà traitée' });
+    }
+
+    await Loan.findByIdAndDelete(req.params.id);
+
+    res.json({ 
+      success: true, 
+      message: 'Demande de prêt annulée avec succès'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+});
+
 // Approuver/Refuser un prêt (trésorier uniquement)
 router.put('/:id/traiter', protect, authorize('tresorier'), async (req, res) => {
   try {

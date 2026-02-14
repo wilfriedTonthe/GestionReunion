@@ -138,6 +138,18 @@ const Loans = () => {
     setShowRemboursementModal(true);
   };
 
+  const handleAnnulerDemande = async (loanId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir annuler cette demande de prêt ?')) return;
+    
+    try {
+      await api.delete(`/loans/${loanId}/annuler`);
+      setMessage({ type: 'success', text: 'Demande de prêt annulée' });
+      fetchData();
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Erreur lors de l\'annulation' });
+    }
+  };
+
   const getStatusBadge = (statut) => {
     const config = {
       en_attente: { color: 'yellow', icon: Clock, label: 'En attente' },
@@ -365,26 +377,38 @@ const Loans = () => {
                       )}
                     </div>
                   </div>
-                  {canManage && (
-                    <div className="flex gap-2">
-                      {loan.statut === 'en_attente' && (
-                        <button
-                          onClick={() => openTraiterModal(loan)}
-                          className="px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 text-sm font-medium"
-                        >
-                          Traiter
-                        </button>
-                      )}
-                      {loan.statut === 'en_cours' && (
-                        <button
-                          onClick={() => openRemboursementModal(loan)}
-                          className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium"
-                        >
-                          + Remboursement
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    {/* Bouton annuler pour le demandeur (ses propres demandes en attente) */}
+                    {activeTab === 'mine' && loan.statut === 'en_attente' && (
+                      <button
+                        onClick={() => handleAnnulerDemande(loan._id)}
+                        className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium"
+                      >
+                        Annuler
+                      </button>
+                    )}
+                    {/* Boutons pour le trésorier */}
+                    {canManage && (
+                      <>
+                        {loan.statut === 'en_attente' && (
+                          <button
+                            onClick={() => openTraiterModal(loan)}
+                            className="px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 text-sm font-medium"
+                          >
+                            Traiter
+                          </button>
+                        )}
+                        {loan.statut === 'en_cours' && (
+                          <button
+                            onClick={() => openRemboursementModal(loan)}
+                            className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium"
+                          >
+                            + Remboursement
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
