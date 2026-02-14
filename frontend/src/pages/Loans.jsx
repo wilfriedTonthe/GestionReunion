@@ -197,19 +197,23 @@ const Loans = () => {
       {/* Fonds de caisse - visible par tous */}
       {fondsCaisse && (
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="text-primary-100 text-sm">Fonds de Caisse</p>
+              <p className="text-primary-100 text-sm">Fonds de Caisse Total</p>
               <p className="text-4xl font-bold">{fondsCaisse.total}$</p>
               <p className="text-primary-200 text-sm mt-1">
-                Amendes: {fondsCaisse.amendes}$ | Intérêts: {fondsCaisse.interets}$
+                Amendes payées: {fondsCaisse.amendes}$ | Intérêts: {fondsCaisse.interets}$
               </p>
             </div>
+            <div className="text-center">
+              <p className="text-primary-100 text-sm">Prêts en cours</p>
+              <p className="text-2xl font-bold">{fondsCaisse.pretsEnCours}$</p>
+            </div>
             <div className="text-right">
-              <p className="text-primary-100 text-sm">Disponible pour prêts</p>
+              <p className="text-primary-100 text-sm">Disponible</p>
               <p className="text-2xl font-bold">{fondsCaisse.disponible}$</p>
-              <p className="text-primary-200 text-sm mt-1">
-                Plafond: {Math.floor(fondsCaisse.disponible * 0.5)}$ (50%)
+              <p className="text-green-300 text-sm mt-1 font-medium">
+                💰 Max empruntable: {fondsCaisse.plafondPret}$
               </p>
             </div>
           </div>
@@ -400,8 +404,13 @@ const Loans = () => {
             </div>
             <form onSubmit={handleRequestSubmit} className="p-6 space-y-4">
               {fondsCaisse && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                  <p><strong>Plafond disponible:</strong> {Math.floor(fondsCaisse.disponible * 0.5)}$ (50% du fonds)</p>
+                <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+                  <p className="text-lg font-bold text-green-700">
+                    💰 Montant maximum empruntable: {fondsCaisse.plafondPret}$
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    (50% du fonds disponible de {fondsCaisse.disponible}$)
+                  </p>
                 </div>
               )}
               <div>
@@ -410,12 +419,20 @@ const Loans = () => {
                   type="number"
                   value={formData.montant}
                   onChange={(e) => setFormData({ ...formData, montant: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                  placeholder="Ex: 500"
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none ${
+                    formData.montant && fondsCaisse && Number(formData.montant) > fondsCaisse.plafondPret
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder={`Max: ${fondsCaisse?.plafondPret || 0}$`}
                   min="1"
-                  max={fondsCaisse ? Math.floor(fondsCaisse.disponible * 0.5) : undefined}
                   required
                 />
+                {formData.montant && fondsCaisse && Number(formData.montant) > fondsCaisse.plafondPret && (
+                  <p className="text-red-600 text-sm mt-1 font-medium">
+                    ⚠️ Le montant dépasse le plafond autorisé de {fondsCaisse.plafondPret}$
+                  </p>
+                )}
               </div>
               
               {formData.montant > 0 && (
@@ -470,8 +487,8 @@ const Loans = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  disabled={submitting || (fondsCaisse && Number(formData.montant) > fondsCaisse.plafondPret)}
+                  className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Envoi...' : 'Soumettre la demande'}
                 </button>

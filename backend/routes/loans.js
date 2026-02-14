@@ -12,16 +12,19 @@ const PENALITE_RETARD = 10; // 10$ tous les 7 jours de retard
 
 // Calculer le fonds de caisse (amendes payées + intérêts des prêts)
 const calculerFondsCaisse = async () => {
+  // Amendes payées (statut = 'payee')
   const amendesPayees = await Fine.aggregate([
-    { $match: { payee: true } },
+    { $match: { statut: 'payee' } },
     { $group: { _id: null, total: { $sum: '$montant' } } }
   ]);
   
+  // Intérêts des prêts remboursés
   const interetsRecus = await Loan.aggregate([
     { $match: { statut: 'rembourse' } },
     { $group: { _id: null, total: { $sum: '$interet' } } }
   ]);
   
+  // Prêts en cours (argent sorti du fonds)
   const pretsEnCours = await Loan.aggregate([
     { $match: { statut: 'en_cours' } },
     { $group: { _id: null, total: { $sum: '$montant' } } }
@@ -31,12 +34,17 @@ const calculerFondsCaisse = async () => {
   const totalInterets = interetsRecus[0]?.total || 0;
   const totalPretsEnCours = pretsEnCours[0]?.total || 0;
   
+  const total = totalAmendes + totalInterets;
+  const disponible = total - totalPretsEnCours;
+  const plafondPret = Math.floor(disponible * 0.5);
+  
   return {
     amendes: totalAmendes,
     interets: totalInterets,
-    total: totalAmendes + totalInterets,
-    disponible: totalAmendes + totalInterets - totalPretsEnCours,
-    pretsEnCours: totalPretsEnCours
+    total: total,
+    disponible: disponible,
+    pretsEnCours: totalPretsEnCours,
+    plafondPret: plafondPret
   };
 };
 
