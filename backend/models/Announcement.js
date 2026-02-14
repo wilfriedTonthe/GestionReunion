@@ -23,6 +23,14 @@ const announcementSchema = new mongoose.Schema({
   actif: {
     type: Boolean,
     default: true
+  },
+  emailEnvoye: {
+    type: Boolean,
+    default: false
+  },
+  envoyerEmail: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true

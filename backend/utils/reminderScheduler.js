@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Meeting = require('../models/Meeting');
 const Loan = require('../models/Loan');
 const Fine = require('../models/Fine');
+const Announcement = require('../models/Announcement');
 const { sendBirthdayReminder, sendBirthdayReminderToSelf, sendMeetingReminder, sendEmail } = require('./emailService');
 
 const PENALITE_RETARD_PRET = 10; // 10$ tous les 7 jours de retard
@@ -305,6 +306,91 @@ const sendPendingLoanNotifications = async () => {
   }
 };
 
+// Envoyer les emails de notification pour les nouveaux communiqués
+const sendPendingAnnouncementNotifications = async () => {
+  try {
+    // Trouver les communiqués qui n'ont pas encore reçu leur notification
+    const announcementsToNotify = await Announcement.find({
+      emailEnvoye: false,
+      envoyerEmail: true
+    }).populate('creePar', 'nom prenom email');
+
+    if (announcementsToNotify.length === 0) return;
+
+    const allMembers = await User.find({ actif: true });
+
+    const typeLabels = {
+      info: 'ℹ️ Information',
+      urgent: '🚨 Urgent',
+      rappel: '🔔 Rappel',
+      evenement: '🎉 Événement'
+    };
+
+    const typeColors = {
+      info: '#3b82f6',
+      urgent: '#ef4444',
+      rappel: '#f59e0b',
+      evenement: '#10b981'
+    };
+
+    for (const announcement of announcementsToNotify) {
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: ${typeColors[announcement.type] || '#6366f1'}; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0;">${typeLabels[announcement.type] || 'Communiqué'}</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #374151; margin-top: 0;">${announcement.titre}</h2>
+            <div style="font-size: 16px; color: #374151; line-height: 1.6; white-space: pre-wrap;">${announcement.contenu}</div>
+            <p style="font-size: 14px; color: #6b7280; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+              Publié par ${announcement.creePar.prenom} ${announcement.creePar.nom}<br>
+              — L'équipe Unit Solidarité
+            </p>
+          </div>
+        </div>
+      `;
+
+      let emailsSent = 0;
+      for (const member of allMembers) {
+        const sent = await sendEmail(member.email, `${typeLabels[announcement.type] || 'Communiqué'} - ${announcement.titre}`, html);
+        if (sent) emailsSent++;
+      }
+
+      // Envoyer confirmation à l'expéditeur
+      const htmlConfirmation = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #10b981; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0;">✅ Communiqué Envoyé</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 16px; color: #374151;">
+              Bonjour <strong>${announcement.creePar.prenom}</strong>,
+            </p>
+            <p style="font-size: 16px; color: #374151;">
+              Votre communiqué a été envoyé avec succès à <strong>${emailsSent} membre(s)</strong>.
+            </p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+              <p><strong>Titre:</strong> ${announcement.titre}</p>
+              <p><strong>Type:</strong> ${typeLabels[announcement.type] || 'Communiqué'}</p>
+              <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
+            </div>
+            <p style="font-size: 14px; color: #6b7280;">
+              — L'équipe Unit Solidarité
+            </p>
+          </div>
+        </div>
+      `;
+      await sendEmail(announcement.creePar.email, `✅ Confirmation - Communiqué "${announcement.titre}" envoyé`, htmlConfirmation);
+
+      // Marquer comme envoyé
+      await Announcement.findByIdAndUpdate(announcement._id, { emailEnvoye: true });
+      console.log(`📢 Communiqué "${announcement.titre}" envoyé à ${emailsSent} membres + confirmation à ${announcement.creePar.email}`);
+    }
+  } catch (error) {
+    console.error('Erreur envoi notifications communiqués:', error.message);
+  }
+};
+
 const startReminderScheduler = () => {
   // Rappels quotidiens à 8h
   cron.schedule('0 8 * * *', async () => {
@@ -318,6 +404,7 @@ const startReminderScheduler = () => {
   cron.schedule('* * * * *', async () => {
     await autoStartMeetings();
     await sendPendingLoanNotifications();
+    await sendPendingAnnouncementNotifications();
   });
 
   console.log('Planificateur de rappels démarré (rappels à 8h, notifications chaque minute)');
