@@ -218,6 +218,93 @@ const checkLoanPenalties = async () => {
   }
 };
 
+// Envoyer les emails de notification pour les nouveaux prêts
+const sendPendingLoanNotifications = async () => {
+  try {
+    // Trouver les prêts qui n'ont pas encore reçu leur notification
+    const loansToNotify = await Loan.find({
+      emailNotificationEnvoye: false
+    }).populate('demandeur', 'nom prenom email');
+
+    if (loansToNotify.length === 0) return;
+
+    const tresorier = await User.findOne({ role: 'tresorier', actif: true });
+
+    for (const loan of loansToNotify) {
+      let emailsSent = 0;
+
+      // Email au trésorier
+      if (tresorier) {
+        const htmlTresorier = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #6366f1; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0;">💰 Nouvelle Demande de Prêt</h1>
+            </div>
+            <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+              <p style="font-size: 16px; color: #374151;">
+                <strong>${loan.demandeur.prenom} ${loan.demandeur.nom}</strong> a soumis une demande de prêt.
+              </p>
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Montant demandé:</strong> ${loan.montant}$</p>
+                <p><strong>Intérêts (${loan.tauxInteret}%):</strong> ${loan.interet}$</p>
+                <p><strong>Total à rembourser:</strong> ${loan.montantTotal}$</p>
+                <p><strong>Motif:</strong> ${loan.motif}</p>
+              </div>
+              <p style="font-size: 14px; color: #6b7280;">
+                Connectez-vous à l'application pour traiter cette demande.
+              </p>
+            </div>
+          </div>
+        `;
+        const sent = await sendEmail(tresorier.email, `💰 Nouvelle demande de prêt - ${loan.demandeur.prenom} ${loan.demandeur.nom}`, htmlTresorier);
+        if (sent) emailsSent++;
+      }
+
+      // Email au demandeur
+      const htmlDemandeur = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #10b981; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0;">✅ Demande de Prêt Reçue</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 16px; color: #374151;">
+              Bonjour <strong>${loan.demandeur.prenom}</strong>,
+            </p>
+            <p style="font-size: 16px; color: #374151;">
+              Votre demande de prêt a bien été enregistrée.
+            </p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+              <p><strong>📋 Récapitulatif:</strong></p>
+              <p>Montant emprunté: <strong>${loan.montant}$</strong></p>
+              <p>Intérêts (${loan.tauxInteret}%): <strong>${loan.interet}$</strong></p>
+              <p>Total à rembourser: <strong>${loan.montantTotal}$</strong></p>
+              <p>Échéance: <strong>${new Date(loan.dateRemboursementPrevue).toLocaleDateString('fr-FR')}</strong></p>
+            </div>
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="color: #92400e; margin: 0;">
+                <strong>⚠️ Attention:</strong> En cas de retard de remboursement, une pénalité de 10$ sera appliquée tous les 7 jours.
+              </p>
+            </div>
+            <p style="font-size: 14px; color: #6b7280;">
+              Le trésorier examinera votre demande et vous serez notifié de sa décision.
+            </p>
+          </div>
+        </div>
+      `;
+      const sentDemandeur = await sendEmail(loan.demandeur.email, '✅ Confirmation de votre demande de prêt - Unit Solidarité', htmlDemandeur);
+      if (sentDemandeur) emailsSent++;
+
+      // Marquer comme envoyé si au moins un email est parti
+      if (emailsSent > 0) {
+        await Loan.findByIdAndUpdate(loan._id, { emailNotificationEnvoye: true });
+        console.log(`📧 Notifications prêt envoyées pour ${loan.demandeur.prenom} ${loan.demandeur.nom} (${emailsSent} emails)`);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur envoi notifications prêts:', error.message);
+  }
+};
+
 const startReminderScheduler = () => {
   // Rappels quotidiens à 8h
   cron.schedule('0 8 * * *', async () => {
@@ -227,12 +314,13 @@ const startReminderScheduler = () => {
     await checkLoanPenalties();
   });
 
-  // Vérification toutes les minutes pour démarrage auto des réunions
+  // Vérification toutes les minutes pour démarrage auto des réunions et notifications
   cron.schedule('* * * * *', async () => {
     await autoStartMeetings();
+    await sendPendingLoanNotifications();
   });
 
-  console.log('Planificateur de rappels démarré (rappels à 8h, démarrage auto chaque minute)');
+  console.log('Planificateur de rappels démarré (rappels à 8h, notifications chaque minute)');
 };
 
 module.exports = {

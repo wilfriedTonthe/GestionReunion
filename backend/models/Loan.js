@@ -43,6 +43,10 @@ const loanSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  emailNotificationEnvoye: {
+    type: Boolean,
+    default: false
+  },
   remboursements: [{
     montant: Number,
     date: { type: Date, default: Date.now },

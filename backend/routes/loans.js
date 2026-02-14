@@ -158,77 +158,8 @@ router.post('/', protect, async (req, res) => {
     const populatedLoan = await Loan.findById(loan._id)
       .populate('demandeur', 'nom prenom email');
 
-    // Envoyer email au trésorier
-    const tresorier = await User.findOne({ role: 'tresorier', actif: true });
-    console.log('Trésorier trouvé:', tresorier ? tresorier.email : 'Aucun trésorier actif');
-    
-    if (tresorier) {
-      const htmlTresorier = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #6366f1; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0;">💰 Nouvelle Demande de Prêt</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
-            <p style="font-size: 16px; color: #374151;">
-              <strong>${req.user.prenom} ${req.user.nom}</strong> a soumis une demande de prêt.
-            </p>
-            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Montant demandé:</strong> ${montant}$</p>
-              <p><strong>Intérêts (${TAUX_INTERET}%):</strong> ${interet}$</p>
-              <p><strong>Total à rembourser:</strong> ${montantTotal}$</p>
-              <p><strong>Motif:</strong> ${motif}</p>
-            </div>
-            <p style="font-size: 14px; color: #6b7280;">
-              Connectez-vous à l'application pour traiter cette demande.
-            </p>
-            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-              — L'équipe Unit Solidarité
-            </p>
-          </div>
-        </div>
-      `;
-      const emailSent = await sendEmail(tresorier.email, `💰 Nouvelle demande de prêt - ${req.user.prenom} ${req.user.nom}`, htmlTresorier);
-      console.log('Email trésorier envoyé:', emailSent);
-    }
-
-    // Envoyer email de confirmation au demandeur
-    const htmlDemandeur = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #10b981; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0;">✅ Demande de Prêt Reçue</h1>
-        </div>
-        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p style="font-size: 16px; color: #374151;">
-            Bonjour <strong>${req.user.prenom}</strong>,
-          </p>
-          <p style="font-size: 16px; color: #374151;">
-            Votre demande de prêt a bien été enregistrée. Voici le récapitulatif :
-          </p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-            <h3 style="margin-top: 0; color: #374151;">📋 Détails du prêt</h3>
-            <p><strong>Montant emprunté:</strong> ${montant}$</p>
-            <p><strong>Taux d'intérêt:</strong> ${TAUX_INTERET}% forfaitaire</p>
-            <p><strong>Intérêts:</strong> ${interet}$</p>
-            <p style="font-size: 18px; color: #10b981;"><strong>💵 Total à rembourser: ${montantTotal}$</strong></p>
-            <p><strong>📅 Échéance:</strong> À la prochaine réunion (1 mois)</p>
-          </div>
-          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <h4 style="margin-top: 0; color: #92400e;">⚠️ Attention - Pénalités de retard</h4>
-            <p style="color: #92400e; margin-bottom: 0;">
-              En cas de non-remboursement à l'échéance, une pénalité de <strong>${PENALITE_RETARD}$</strong> sera appliquée tous les <strong>7 jours</strong> de retard.
-            </p>
-          </div>
-          <p style="font-size: 14px; color: #6b7280;">
-            Le trésorier examinera votre demande et vous serez notifié de sa décision.
-          </p>
-          <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
-            — L'équipe Unit Solidarité
-          </p>
-        </div>
-      </div>
-    `;
-    const emailDemandeurSent = await sendEmail(req.user.email, '✅ Confirmation de votre demande de prêt - Unit Solidarité', htmlDemandeur);
-    console.log('Email demandeur envoyé:', emailDemandeurSent, 'à', req.user.email);
+    // Les emails seront envoyés de manière asynchrone par le scheduler
+    console.log('Demande de prêt créée, notification en attente d\'envoi...');
 
     res.status(201).json({ 
       success: true, 
