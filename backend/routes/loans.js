@@ -112,7 +112,8 @@ router.get('/stats', protect, authorize('president', 'tresorier', 'censeur'), as
 // Faire une demande de prêt (tous les membres)
 router.post('/', protect, async (req, res) => {
   try {
-    const { montant, motif } = req.body;
+    const { motif } = req.body;
+    const montant = Number(req.body.montant);
 
     // Vérifier si le membre a déjà un prêt en cours
     const pretEnCours = await Loan.findOne({
@@ -159,6 +160,8 @@ router.post('/', protect, async (req, res) => {
 
     // Envoyer email au trésorier
     const tresorier = await User.findOne({ role: 'tresorier', actif: true });
+    console.log('Trésorier trouvé:', tresorier ? tresorier.email : 'Aucun trésorier actif');
+    
     if (tresorier) {
       const htmlTresorier = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -184,7 +187,8 @@ router.post('/', protect, async (req, res) => {
           </div>
         </div>
       `;
-      await sendEmail(tresorier.email, `💰 Nouvelle demande de prêt - ${req.user.prenom} ${req.user.nom}`, htmlTresorier);
+      const emailSent = await sendEmail(tresorier.email, `💰 Nouvelle demande de prêt - ${req.user.prenom} ${req.user.nom}`, htmlTresorier);
+      console.log('Email trésorier envoyé:', emailSent);
     }
 
     // Envoyer email de confirmation au demandeur
@@ -223,7 +227,8 @@ router.post('/', protect, async (req, res) => {
         </div>
       </div>
     `;
-    await sendEmail(req.user.email, '✅ Confirmation de votre demande de prêt - Unit Solidarité', htmlDemandeur);
+    const emailDemandeurSent = await sendEmail(req.user.email, '✅ Confirmation de votre demande de prêt - Unit Solidarité', htmlDemandeur);
+    console.log('Email demandeur envoyé:', emailDemandeurSent, 'à', req.user.email);
 
     res.status(201).json({ 
       success: true, 
