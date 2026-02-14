@@ -64,11 +64,13 @@ router.post('/', protect, authorize('president', 'censeur', 'tresorier'), async 
         </div>
       `;
 
+      let emailsSent = 0;
       for (const member of allMembers) {
-        await sendEmail(member.email, `${typeLabels[type] || 'Communiqué'} - ${titre}`, html);
+        const sent = await sendEmail(member.email, `${typeLabels[type] || 'Communiqué'} - ${titre}`, html);
+        if (sent) emailsSent++;
       }
 
-      console.log(`Communiqué "${titre}" envoyé à ${allMembers.length} membres`);
+      console.log(`Communiqué "${titre}" - Emails envoyés: ${emailsSent}/${allMembers.length}`);
     }
 
     const populatedAnnouncement = await Announcement.findById(announcement._id)
