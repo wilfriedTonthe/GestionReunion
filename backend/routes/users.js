@@ -6,7 +6,9 @@ const router = express.Router();
 
 router.get('/', protect, authorize('president', 'tresorier', 'censeur'), async (req, res) => {
   try {
-    const users = await User.find({ actif: true }).select('-password');
+    // Le président voit tous les membres (actifs et bloqués), les autres ne voient que les actifs
+    const filter = req.user.role === 'president' ? {} : { actif: true };
+    const users = await User.find(filter).select('-password');
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });

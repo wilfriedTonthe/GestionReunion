@@ -208,17 +208,24 @@ const Users = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredUsers.map((member) => (
-                  <tr key={member._id} className="hover:bg-gray-50">
+                  <tr key={member._id} className={`hover:bg-gray-50 ${!member.actif ? 'bg-red-50' : ''}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                          <span className="text-primary-700 font-semibold">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${!member.actif ? 'bg-red-100' : 'bg-primary-100'}`}>
+                          <span className={`font-semibold ${!member.actif ? 'text-red-700' : 'text-primary-700'}`}>
                             {member.prenom?.[0]}{member.nom?.[0]}
                           </span>
                         </div>
-                        <span className="font-medium text-gray-900">
-                          {member.prenom} {member.nom}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${!member.actif ? 'text-red-700' : 'text-gray-900'}`}>
+                            {member.prenom} {member.nom}
+                          </span>
+                          {!member.actif && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">
+                              Bloqué
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500">{member.email}</td>
