@@ -13,6 +13,7 @@ import Users from './pages/Users';
 import Reglement from './pages/Reglement';
 import Profile from './pages/Profile';
 import Announcements from './pages/Announcements';
+import Loans from './pages/Loans';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -51,6 +52,7 @@ function App() {
             <Route path="users" element={<Users />} />
             <Route path="reglement" element={<Reglement />} />
             <Route path="announcements" element={<Announcements />} />
+            <Route path="loans" element={<Loans />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
