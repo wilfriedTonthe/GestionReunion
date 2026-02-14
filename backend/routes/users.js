@@ -142,4 +142,18 @@ router.delete('/:id', protect, authorize('president'), async (req, res) => {
   }
 });
 
+router.delete('/:id/permanent', protect, authorize('president'), async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    res.json({ success: true, message: 'Utilisateur supprimé définitivement' });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+});
+
 module.exports = router;
