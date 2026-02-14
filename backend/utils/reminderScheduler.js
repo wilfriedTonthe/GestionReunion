@@ -1,7 +1,11 @@
 const cron = require('node-cron');
 const User = require('../models/User');
 const Meeting = require('../models/Meeting');
-const { sendBirthdayReminder, sendBirthdayReminderToSelf, sendMeetingReminder } = require('./emailService');
+const Loan = require('../models/Loan');
+const Fine = require('../models/Fine');
+const { sendBirthdayReminder, sendBirthdayReminderToSelf, sendMeetingReminder, sendEmail } = require('./emailService');
+
+const PENALITE_RETARD_PRET = 10; // 10$ tous les 7 jours de retard
 
 const checkBirthdayReminders = async () => {
   try {
@@ -134,12 +138,93 @@ const autoStartMeetings = async () => {
   }
 };
 
+// Vérifier les pénalités de retard sur les prêts (10$ tous les 7 jours)
+const checkLoanPenalties = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const loansEnRetard = await Loan.find({
+      statut: 'en_cours',
+      dateRemboursementPrevue: { $lt: today }
+    }).populate('demandeur', 'nom prenom email');
+
+    for (const loan of loansEnRetard) {
+      const dateEcheance = new Date(loan.dateRemboursementPrevue);
+      dateEcheance.setHours(0, 0, 0, 0);
+      
+      const joursRetard = Math.floor((today - dateEcheance) / (1000 * 60 * 60 * 24));
+      const nombrePenalites = Math.floor(joursRetard / 7);
+      
+      // Calculer les pénalités déjà appliquées
+      const penalitesExistantes = loan.penalites || 0;
+      const penalitesAttendues = nombrePenalites * PENALITE_RETARD_PRET;
+      
+      if (penalitesAttendues > penalitesExistantes) {
+        const nouvellePenalite = penalitesAttendues - penalitesExistantes;
+        
+        // Mettre à jour le prêt
+        loan.penalites = penalitesAttendues;
+        loan.montantTotal = loan.montant + loan.interet + penalitesAttendues;
+        await loan.save();
+        
+        // Créer une amende pour la pénalité
+        await Fine.create({
+          membre: loan.demandeur._id,
+          typeAmende: 'retard_pret',
+          montant: nouvellePenalite,
+          motif: 'retard_pret',
+          description: `Pénalité de retard sur prêt (${joursRetard} jours de retard)`,
+          automatique: true
+        });
+        
+        // Notifier le membre
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #ef4444; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0;">⚠️ Pénalité de Retard</h1>
+            </div>
+            <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+              <p style="font-size: 16px; color: #374151;">
+                Bonjour <strong>${loan.demandeur.prenom}</strong>,
+              </p>
+              <p style="font-size: 16px; color: #374151;">
+                Votre prêt de <strong>${loan.montant}$</strong> est en retard de <strong>${joursRetard} jours</strong>.
+              </p>
+              <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
+                <p style="color: #991b1b; margin: 0;">
+                  Une pénalité de <strong>${nouvellePenalite}$</strong> a été ajoutée à votre prêt.
+                </p>
+                <p style="color: #991b1b; margin-top: 10px; margin-bottom: 0;">
+                  <strong>Nouveau total à rembourser: ${loan.montantTotal}$</strong>
+                </p>
+              </div>
+              <p style="font-size: 14px; color: #6b7280;">
+                Veuillez régulariser votre situation au plus vite pour éviter d'autres pénalités.
+              </p>
+              <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                — L'équipe Unit Solidarité
+              </p>
+            </div>
+          </div>
+        `;
+        await sendEmail(loan.demandeur.email, '⚠️ Pénalité de retard sur votre prêt - Unit Solidarité', html);
+        
+        console.log(`⚠️ Pénalité de ${nouvellePenalite}$ ajoutée au prêt de ${loan.demandeur.prenom} ${loan.demandeur.nom} (${joursRetard} jours de retard)`);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur vérification pénalités prêts:', error.message);
+  }
+};
+
 const startReminderScheduler = () => {
   // Rappels quotidiens à 8h
   cron.schedule('0 8 * * *', async () => {
     console.log('Exécution des rappels quotidiens...');
     await checkBirthdayReminders();
     await checkMeetingReminders();
+    await checkLoanPenalties();
   });
 
   // Vérification toutes les minutes pour démarrage auto des réunions
@@ -154,5 +239,6 @@ module.exports = {
   startReminderScheduler,
   checkBirthdayReminders,
   checkMeetingReminders,
-  autoStartMeetings
+  autoStartMeetings,
+  checkLoanPenalties
 };

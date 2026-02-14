@@ -16,11 +16,15 @@ import {
   FileText
 } from 'lucide-react';
 
+const TAUX_INTERET = 5;
+const PENALITE_RETARD = 10;
+
 const Loans = () => {
   const { user } = useAuth();
   const [loans, setLoans] = useState([]);
   const [myLoans, setMyLoans] = useState([]);
   const [stats, setStats] = useState(null);
+  const [fondsCaisse, setFondsCaisse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showTraiterModal, setShowTraiterModal] = useState(false);
@@ -29,8 +33,7 @@ const Loans = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [formData, setFormData] = useState({
     montant: '',
-    motif: '',
-    dateRemboursementPrevue: ''
+    motif: ''
   });
   const [traiterData, setTraiterData] = useState({
     statut: 'approuve',
@@ -52,8 +55,12 @@ const Loans = () => {
 
   const fetchData = async () => {
     try {
-      const myLoansRes = await api.get('/loans/my');
+      const [myLoansRes, fondsRes] = await Promise.all([
+        api.get('/loans/my'),
+        api.get('/loans/fonds-caisse')
+      ]);
       setMyLoans(myLoansRes.data.data || []);
+      setFondsCaisse(fondsRes.data.data);
 
       if (canViewAll) {
         const [loansRes, statsRes] = await Promise.all([
@@ -187,6 +194,28 @@ const Loans = () => {
         </div>
       )}
 
+      {/* Fonds de caisse - visible par tous */}
+      {fondsCaisse && (
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-primary-100 text-sm">Fonds de Caisse</p>
+              <p className="text-4xl font-bold">{fondsCaisse.total}$</p>
+              <p className="text-primary-200 text-sm mt-1">
+                Amendes: {fondsCaisse.amendes}$ | Intérêts: {fondsCaisse.interets}$
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-primary-100 text-sm">Disponible pour prêts</p>
+              <p className="text-2xl font-bold">{fondsCaisse.disponible}$</p>
+              <p className="text-primary-200 text-sm mt-1">
+                Plafond: {Math.floor(fondsCaisse.disponible * 0.5)}$ (50%)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {canViewAll && stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
@@ -285,7 +314,19 @@ const Loans = () => {
                         )}
                         {getStatusBadge(loan.statut)}
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{loan.montant}$</p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-2xl font-bold text-gray-900">{loan.montant}$</p>
+                        {loan.interet > 0 && (
+                          <span className="text-sm text-gray-500">
+                            + {loan.interet}$ intérêts ({loan.tauxInteret}%) = <span className="font-semibold text-primary-600">{loan.montantTotal}$</span>
+                          </span>
+                        )}
+                        {loan.penalites > 0 && (
+                          <span className="text-sm text-red-600 font-medium">
+                            + {loan.penalites}$ pénalités
+                          </span>
+                        )}
+                      </div>
                       <p className="text-gray-600 mt-1">{loan.motif}</p>
                       <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
@@ -295,7 +336,7 @@ const Loans = () => {
                         {loan.dateRemboursementPrevue && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            Remb. prévu: {new Date(loan.dateRemboursementPrevue).toLocaleDateString('fr-FR')}
+                            Échéance: {new Date(loan.dateRemboursementPrevue).toLocaleDateString('fr-FR')}
                           </span>
                         )}
                       </div>
@@ -303,12 +344,12 @@ const Loans = () => {
                         <div className="mt-2">
                           <div className="flex items-center gap-2 text-sm">
                             <span className="text-gray-500">Remboursé:</span>
-                            <span className="font-medium">{loan.montantRembourse}$ / {loan.montant}$</span>
+                            <span className="font-medium">{loan.montantRembourse}$ / {loan.montantTotal || loan.montant}$</span>
                           </div>
                           <div className="w-48 h-2 bg-gray-200 rounded-full mt-1">
                             <div 
                               className="h-2 bg-green-500 rounded-full" 
-                              style={{ width: `${(loan.montantRembourse / loan.montant) * 100}%` }}
+                              style={{ width: `${(loan.montantRembourse / (loan.montantTotal || loan.montant)) * 100}%` }}
                             ></div>
                           </div>
                         </div>
@@ -350,7 +391,7 @@ const Loans = () => {
       {/* Modal demande de prêt */}
       {showRequestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl w-full max-w-md">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-xl font-semibold">Demander un prêt</h2>
               <button onClick={() => setShowRequestModal(false)}>
@@ -358,8 +399,13 @@ const Loans = () => {
               </button>
             </div>
             <form onSubmit={handleRequestSubmit} className="p-6 space-y-4">
+              {fondsCaisse && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                  <p><strong>Plafond disponible:</strong> {Math.floor(fondsCaisse.disponible * 0.5)}$ (50% du fonds)</p>
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Montant ($)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Montant demandé ($)</label>
                 <input
                   type="number"
                   value={formData.montant}
@@ -367,11 +413,44 @@ const Loans = () => {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                   placeholder="Ex: 500"
                   min="1"
+                  max={fondsCaisse ? Math.floor(fondsCaisse.disponible * 0.5) : undefined}
                   required
                 />
               </div>
+              
+              {formData.montant > 0 && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-3">📋 Récapitulatif du prêt</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Montant emprunté:</span>
+                      <span className="font-medium">{formData.montant}$</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Intérêts ({TAUX_INTERET}%):</span>
+                      <span className="font-medium">{Math.ceil(formData.montant * TAUX_INTERET / 100)}$</span>
+                    </div>
+                    <div className="flex justify-between text-lg border-t pt-2 mt-2">
+                      <span className="font-semibold text-gray-900">Total à rembourser:</span>
+                      <span className="font-bold text-primary-600">
+                        {Number(formData.montant) + Math.ceil(formData.montant * TAUX_INTERET / 100)}$
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span>Échéance:</span>
+                      <span>Prochaine réunion (1 mois)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                <p className="font-medium">⚠️ Pénalités de retard</p>
+                <p>En cas de non-remboursement à l'échéance: <strong>{PENALITE_RETARD}$</strong> tous les 7 jours de retard.</p>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Motif</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motif de la demande</label>
                 <textarea
                   value={formData.motif}
                   onChange={(e) => setFormData({ ...formData, motif: e.target.value })}
@@ -379,15 +458,6 @@ const Loans = () => {
                   rows={3}
                   placeholder="Expliquez la raison de votre demande..."
                   required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date de remboursement prévue</label>
-                <input
-                  type="date"
-                  value={formData.dateRemboursementPrevue}
-                  onChange={(e) => setFormData({ ...formData, dateRemboursementPrevue: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -403,7 +473,7 @@ const Loans = () => {
                   disabled={submitting}
                   className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 >
-                  {submitting ? 'Envoi...' : 'Soumettre'}
+                  {submitting ? 'Envoi...' : 'Soumettre la demande'}
                 </button>
               </div>
             </form>

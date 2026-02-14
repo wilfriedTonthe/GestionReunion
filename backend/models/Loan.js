@@ -11,6 +11,18 @@ const loanSchema = new mongoose.Schema({
     required: [true, 'Le montant est requis'],
     min: [1, 'Le montant doit être positif']
   },
+  interet: {
+    type: Number,
+    default: 0
+  },
+  tauxInteret: {
+    type: Number,
+    default: 5
+  },
+  montantTotal: {
+    type: Number,
+    default: 0
+  },
   motif: {
     type: String,
     required: [true, 'Le motif est requis']
@@ -27,10 +39,15 @@ const loanSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  penalites: {
+    type: Number,
+    default: 0
+  },
   remboursements: [{
     montant: Number,
     date: { type: Date, default: Date.now },
-    commentaire: String
+    commentaire: String,
+    type: { type: String, enum: ['capital', 'penalite'], default: 'capital' }
   }],
   traitePar: {
     type: mongoose.Schema.Types.ObjectId,
