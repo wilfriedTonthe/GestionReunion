@@ -96,24 +96,36 @@ const MeetingDetail = () => {
     setGeocodeError('');
     
     try {
+      // Ajouter Canada à l'adresse si pas déjà présent pour améliorer la précision
+      const searchAddress = address.toLowerCase().includes('canada') 
+        ? address 
+        : `${address}, Canada`;
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress)}&limit=1&countrycodes=ca`,
         { headers: { 'Accept-Language': 'fr' } }
       );
       const data = await response.json();
       
       if (data && data.length > 0) {
         const { lat, lon, display_name } = data[0];
-        setEditForm(prev => ({
-          ...prev,
-          lieu: {
-            ...prev.lieu,
-            nom: prev.lieu.nom || display_name.split(',')[0],
-            coordinates: { latitude: lat, longitude: lon }
-          }
-        }));
+        // Vérifier que les coordonnées sont bien au Canada (latitude entre 41 et 84, longitude entre -141 et -52)
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lon);
+        if (latitude >= 41 && latitude <= 84 && longitude >= -141 && longitude <= -52) {
+          setEditForm(prev => ({
+            ...prev,
+            lieu: {
+              ...prev.lieu,
+              nom: prev.lieu.nom || display_name.split(',')[0],
+              coordinates: { latitude: lat, longitude: lon }
+            }
+          }));
+        } else {
+          setGeocodeError('Adresse non trouvée au Canada. Vérifiez l\'adresse.');
+        }
       } else {
-        setGeocodeError('Adresse non trouvée');
+        setGeocodeError('Adresse non trouvée. Essayez avec plus de détails.');
       }
     } catch (error) {
       setGeocodeError('Erreur de géocodage');
