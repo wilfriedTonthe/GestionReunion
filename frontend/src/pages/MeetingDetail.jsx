@@ -506,8 +506,8 @@ const MeetingDetail = () => {
                   />
                   <button
                     type="button"
-                    onClick={() => geocodeAddress(editForm.lieu.adresse)}
-                    disabled={geocoding || !editForm.lieu.adresse}
+                    onClick={() => geocodeAddress(editForm.lieu.adresse || editForm.lieu.nom)}
+                    disabled={geocoding || (!editForm.lieu.adresse && !editForm.lieu.nom)}
                     className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                   >
                     {geocoding ? (

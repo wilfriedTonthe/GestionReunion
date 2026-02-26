@@ -322,8 +322,8 @@ const Meetings = () => {
                   />
                   <button
                     type="button"
-                    onClick={() => geocodeAddress(formData.lieu.adresse)}
-                    disabled={geocoding || !formData.lieu.adresse}
+                    onClick={() => geocodeAddress(formData.lieu.adresse || formData.lieu.nom)}
+                    disabled={geocoding || (!formData.lieu.adresse && !formData.lieu.nom)}
                     className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
                   >
                     {geocoding ? (
