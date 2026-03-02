@@ -1,16 +1,29 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configuration du transporteur SMTP
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+};
 
 const sendEmail = async (to, subject, html) => {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.log('Email non envoyé (RESEND_API_KEY non configuré):', { to, subject });
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.log('Email non envoyé (SMTP non configuré):', { to, subject });
       return false;
     }
 
-    await resend.emails.send({
-      from: 'Unit Solidarité <onboarding@resend.dev>',
+    const transporter = createTransporter();
+    
+    await transporter.sendMail({
+      from: `Unit Solidarité <${process.env.SMTP_USER}>`,
       to: to,
       subject: subject,
       html: html
