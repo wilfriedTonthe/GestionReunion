@@ -1,14 +1,22 @@
 const nodemailer = require('nodemailer');
 
 // Configuration du transporteur SMTP
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
+let transporter = null;
+
+const getTransporter = () => {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100
+    });
+  }
+  return transporter;
 };
 
 const sendEmail = async (to, subject, html) => {
@@ -18,9 +26,9 @@ const sendEmail = async (to, subject, html) => {
       return false;
     }
 
-    const transporter = createTransporter();
+    const emailTransporter = getTransporter();
     
-    await transporter.sendMail({
+    await emailTransporter.sendMail({
       from: `Unit Solidarité <${process.env.SMTP_USER}>`,
       to: to,
       subject: subject,
